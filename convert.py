@@ -84,7 +84,14 @@ def get_input_ref_df(file):
         col = 0
         for c in r[1:]:
             if (color_ref_df.iloc[row,col]):
-                color_ref_df.iloc[row,col] = c.fill.fgColor.theme +  round(c.fill.fgColor.tint,2)
+                if c.fill.fgColor.type == "rgb":
+                    color_ref_df.iloc[row,col] = int(c.fill.fgColor.rgb,16) + round(c.fill.fgColor.tint,2)
+                elif c.fill.fgColor.type == "theme":
+                    color_ref_df.iloc[row,col] = c.fill.fgColor.theme +  round(c.fill.fgColor.tint,2)
+                else:
+                    print("Unrecognized color type!")
+                    exit(1)
+
             col += 1
         row += 1
 
@@ -97,7 +104,13 @@ def get_input_ref_df(file):
         if c.value == None:
             continue
 
-        color_table.append([c.fill.fgColor.theme + round(c.fill.fgColor.tint,2), c.value])
+        if c.fill.fgColor.type == "rgb":
+            color_table.append([int(c.fill.fgColor.rgb,16) + round(c.fill.fgColor.tint,2), c.value])
+        elif c.fill.fgColor.type == "theme":
+            color_table.append([c.fill.fgColor.theme + round(c.fill.fgColor.tint,2), c.value])
+        else:
+            print("Unrecognized color type!")
+            exit(1)
 
     # assert uniqueness
     themes = [pair[0] for pair in color_table]
@@ -153,6 +166,10 @@ def main():
     else:
         print("Error: Unsupported input file type. Supported: .pdf, .csv")
         exit()
+
+    # Convert Cq to floating point
+    table_df["Cq"] = table_df["Cq"].replace("Undetermined", 0)
+    table_df["Cq"] = table_df["Cq"].astype(float)
 
     if os.path.exists(output_file):
         raise FileExistsError(f"The file '{output_file}' already exists. Will not overwrite.")

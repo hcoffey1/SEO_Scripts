@@ -171,6 +171,9 @@ def main():
     table_df["Cq"] = table_df["Cq"].replace("Undetermined", 0)
     table_df["Cq"] = table_df["Cq"].astype(float)
 
+    # Add mean column for matching Content and Target wells.
+    table_df['Cq_mean'] = table_df.groupby(['Content', 'Target'])['Cq'].transform('mean')
+
     if os.path.exists(output_file):
         raise FileExistsError(f"The file '{output_file}' already exists. Will not overwrite.")
 

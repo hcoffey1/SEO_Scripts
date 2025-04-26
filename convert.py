@@ -79,13 +79,12 @@ def get_input_ref_df(file):
     col = 0
 
     # Create reference table with theme color values
+    # Have to combine tint (fp rounded) with theme as some colors have same theme value.
     for r in ws[2:i]:
         col = 0
         for c in r[1:]:
             if (color_ref_df.iloc[row,col]):
-                color_ref_df.iloc[row,col] = c.fill.fgColor.theme
-            else:
-                break
+                color_ref_df.iloc[row,col] = c.fill.fgColor.theme +  round(c.fill.fgColor.tint,2)
             col += 1
         row += 1
 
@@ -98,7 +97,13 @@ def get_input_ref_df(file):
         if c.value == None:
             continue
 
-        color_table.append([c.fill.fgColor.theme, c.value])
+        color_table.append([c.fill.fgColor.theme + round(c.fill.fgColor.tint,2), c.value])
+
+    # assert uniqueness
+    themes = [pair[0] for pair in color_table]
+    targets = [pair[1] for pair in color_table]
+    assert len(themes)  == len(set(themes)),  f"Duplicate theme-elements found: \n{themes}\n{targets}"
+    assert len(targets) == len(set(targets)), f"Duplicate target-elements found: \n{themes}\n{targets}"
 
     # Create color dict and apply to color ref df to create final lookup df.
     color_df = (pd.DataFrame(color_table))

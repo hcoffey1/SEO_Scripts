@@ -15,7 +15,7 @@ def get_run_delta(df1, df2):
             )
 
     merged = merged.dropna()
-    merged["Day"] = merged['Sample'].str.extract(r'(D\d+)')
+    merged["Day"] = merged['Sample'].str.extract(r'([DF]\d+)')
     merged["Replicate"] = merged['Sample'].str.extract(r'\(([Pp]?n=\d+)\)')
     merged['Cq_Delta'] = abs(merged['Cq_mean_run1'] - merged['Cq_mean_run2'])
 
@@ -26,9 +26,29 @@ def create_target_figure(inDF, target, rad):
     df = (inDF[inDF['Target'] == target])
     df = df[df['Sample'].str.contains(rad)]
 
+    unique_days = df['Day'].unique()
+    day_order = sorted(
+            unique_days,
+            key=lambda x: (
+                0 if x[0] == 'F' else 1,
+                int(x[1:])
+                )
+            )
+
     plt.figure(figsize=(24,12))
-    sns.boxplot(data=df, x='Day', y='Cq_mean', fill=False)
+    sns.boxplot(data=df, x='Day', y='Cq_mean', fill=False, order=day_order)
     sns.scatterplot(data=df, x='Day', y='Cq_mean', hue='Replicate', style='Replicate', s=150)
+
+    # If we want text annotations
+    #df['Day'] = pd.Categorical(df['Day'], categories=day_order, ordered=True)
+    #ax = plt.gca()
+    #for i, row in df.iterrows():
+    #    # get the x-coordinate of this category
+    #    x = day_order.index(row['Day'])
+    #    y = row['Cq_mean']
+    #    ax.text(x, y + 0.1,      # tweak the +0.1 so it sits above the diamond
+    #            f"{y:.2f}",     # formatted median value
+    #            ha='center', va='bottom', fontsize=12)
 
     plt.title("{}: {}".format(target, rad))
     plt.savefig("./2025_04_27/{}_{}.png".format(target,rad), dpi=300, bbox_inches="tight")
@@ -76,9 +96,15 @@ def main():
     print("Done.")
 
     df = pd.concat([df1,df2], ignore_index=True).reset_index()
-    df["Day"] = df['Sample'].str.extract(r'(D\d+)')
+
+    # Capture both D# and F# entries
+    df["Day"] = df['Sample'].str.extract(r'([DF]\d+)')
     df["Replicate"] = df['Sample'].str.extract(r'\(([Pp]?n=\d+)\)')
     df["Rad"] = df['Sample'].str.extract(r'(.*?Gy)')
+
+    # Record median data to new xlsx file
+    df['Cq_median_by_day'] = df.groupby(['Day', 'Target', 'Rad'])['Cq'].transform('median')
+    df.to_excel("./2025_04_27/cq_median.xlsx")
 
     print("Generating figures...")
     for rad in (df['Rad'].unique()):
